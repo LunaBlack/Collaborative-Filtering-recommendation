@@ -136,14 +136,14 @@ def userCFPrediction(u, m, dataSet, userSim, k):
     rateSim = 0.0
     while(k):
         index = uSim.argmax()
-        m = uSim[index]
-        if uSim[index] == 0:
+        maxSim = uSim[index]
+        if maxSim == 0:
             break  #不再有相似用户
         if dataSet[index][m] == 0:
             uSim[index] = 0  #在之后不再考虑该用户
             continue
-        rateSim += m * (dataSet[index][m] - np.mean(dataSet[index, np.nonzero(dataSet[index,:])[0]]))
-        simTotal += m
+        rateSim += maxSim * (dataSet[index][m] - np.mean(dataSet[index, np.nonzero(dataSet[index,:])[0]]))
+        simTotal += maxSim
         uSim[index] = 0  #在之后不再考虑该用户
         k -= 1
 
@@ -165,14 +165,14 @@ def itemCFPrediction(u, m, dataSet, itemSim, k):
     rateSim = 0.0
     while(k):
         index = mSim.argmax()
-        m = mSim[index]
-        if mSim[index] == 0:
+        maxSim = mSim[index]
+        if maxSim == 0:
             break  #不再有相似项目
         if dataSet[u][index] == 0:
             mSim[index] = 0  #在之后不再考虑该项目
             continue
-        rateSim += m * (dataSet[u][index] - np.mean(dataSet[np.nonzero(dataSet[:,index])[0], index]))
-        simTotal += m
+        rateSim += maxSim * (dataSet[u][index] - np.mean(dataSet[np.nonzero(dataSet[:,index])[0], index]))
+        simTotal += maxSim
         mSim[index] = 0  #在之后不再考虑该项目
         k -= 1
 
