@@ -1,6 +1,6 @@
 # Collaborative-Filtering-recommendation
 
-整个项目大体分为3个阶段。
+整个项目分为若干个阶段。
 
 Phase1阶段：
 包含文件Phase1a、Phase1b；
@@ -16,5 +16,11 @@ Phase2EC阶段：
 改进了相似度的计算方法
 
 Rewrite：
+包含文件RewriteCF.py；
 用numpy等库重写了一遍Phase2EC的算法；
 算法思想一致，稍微提高了一些性能
+
+Phase3阶段：
+包含文件Phase3.py；
+在Rewrite的基础上进一步延伸；
+不是取基于用户或项目的协同过滤算法的算术平均值，而是加权求和，给它们赋予不同权重
