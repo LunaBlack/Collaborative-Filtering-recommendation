@@ -5,6 +5,7 @@ import random, math, time
 import pandas as pd
 import numpy as np
 from numpy import linalg as la
+from sklearn.metrics.pairwise import cosine_similarity
 
 
 userNum = 943
@@ -41,10 +42,14 @@ def list2Array(dataSet):
 
 # 皮尔逊相关系数
 def pearsSim(inA, inB):
-    if len(inA) <= 1:   sim = 0.0
-    else:   sim = np.corrcoef(inA, inB)[0][1]
-    if np.isnan(sim):   sim = 0.0
+    sim = (np.corrcoef(inA, inB)[0][1] + 1) / 2
     return sim
+
+
+# 余弦相似度
+def cosineSim(inA,inB):
+    sim = np.dot(inA, inB.reshape(-1, 1))/(la.norm(inA) * la.norm(inB))
+    return sim[0]
 
 
 #计算用户相似度矩阵
@@ -53,14 +58,15 @@ def userSim(dataSet):
     userSimArr = np.zeros(shape=(n,n))
     for i in range(n):
         for j in range(i+1, n):
-            sim = 0
             overLap = np.nonzero(np.logical_and(dataSet[i,:]>0, dataSet[j,:]>0))[0]
-            if len(overLap) > 0:
+            if len(overLap) > 1:
                 sim = pearsSim(dataSet[i,overLap], dataSet[j,overLap])
+            else:
+                sim = 0
             userSimArr[i][j] = sim
             userSimArr[j][i] = sim
     return userSimArr
-    
+
 
 #计算项目相似度矩阵
 def itemSim(dataSet):
@@ -70,7 +76,7 @@ def itemSim(dataSet):
         for j in range(i+1, n):
             sim = 0
             overLap = np.nonzero(np.logical_and(dataSet[:,i]>0, dataSet[:,j]>0))[0]
-            if len(overLap) > 0:
+            if len(overLap) > 1:
                 sim = pearsSim(dataSet[overLap,i], dataSet[overLap,j])
             itemSimArr[i][j] = sim
             itemSimArr[j][i] = sim
@@ -85,10 +91,11 @@ def newUserSim(dataSet):
     newUserSim = np.zeros(shape=(n,n))  #改进的相似度矩阵,非对称的
     for i in range(n):
         for j in range(i+1, n):
-            sim = 0
             overLap = np.nonzero(np.logical_and(dataSet[i,:]>0, dataSet[j,:]>0))[0]
-            if len(overLap) > 0:
+            if len(overLap) > 1:
                 sim = pearsSim(dataSet[i,overLap], dataSet[j,overLap])
+            else:
+                sim = 0
             userSimArr[i][j] = sim
             userSimArr[j][i] = sim
             userCommon[i][j] = len(overLap)
@@ -98,7 +105,7 @@ def newUserSim(dataSet):
     newUserSim = coef * userSimArr  #以列来读,某列代表某用户与其它用户的相似度
     newUserSim = np.nan_to_num(newUserSim)
     return newUserSim, userCommon
-    
+
 
 #计算改进的项目相似度矩阵
 def newItemSim(dataSet):
@@ -108,10 +115,11 @@ def newItemSim(dataSet):
     newItemSim = np.zeros(shape=(n,n))  #改进的相似度矩阵,非对称的
     for i in range(n):
         for j in range(i+1, n):
-            sim = 0
             overLap = np.nonzero(np.logical_and(dataSet[:,i]>0, dataSet[:,j]>0))[0]
-            if len(overLap) > 0:
+            if len(overLap) > 1:
                 sim = pearsSim(dataSet[overLap,i], dataSet[overLap,j])
+            else:
+                sim = 0
             itemSimArr[i][j] = sim
             itemSimArr[j][i] = sim
             itemCommon[i][j] = len(overLap)
@@ -131,7 +139,7 @@ def userCFPrediction(u, m, dataSet, userSim, userCommon, k):
     else:
         rating = np.mean(dataSet[u, uRated])
     uSim = userSim[:,u].copy()
-    
+
     simTotal = 0.0
     rateSim = 0.0
     sumCommon = 0
@@ -162,7 +170,7 @@ def itemCFPrediction(u, m, dataSet, itemSim, itemCommon, k):
     else:
         rating = np.mean(dataSet[mRated, m])
     mSim = itemSim[:,m].copy()
-    
+
     simTotal = 0.0
     rateSim = 0.0
     sumCommon = 0
@@ -184,7 +192,7 @@ def itemCFPrediction(u, m, dataSet, itemSim, itemCommon, k):
         rating += rateSim/simTotal
     return rating, sumCommon
 
-        
+
 #取基于用户和基于项目评分的均值作为最终的预测评分
 def meanCFPrediction(u, m, dataSet, userSim, itemSim, k1, k2):
     rating1 = userCFPrediction(u, m, dataSet, userSim, k1)
@@ -224,12 +232,12 @@ def runAll(filename):
     oldItemSim = itemSim(trainSet)
     userSimArr, userCommon = newUserSim(trainSet)
     itemSimArr, itemCommon = newItemSim(trainSet)
-    
+
     actual = []
     predicted = []
     for i in range(15):
         predicted.append([])
-        
+
     for t in testSet:
         actual.append(t[2])
 
@@ -245,7 +253,7 @@ def runAll(filename):
         predicted[7].append(itemCFPrediction(t[0]-1, t[1]-1, trainSet, oldItemSim, 300))
         predicted[8].append(itemCFPrediction(t[0]-1, t[1]-1, trainSet, oldItemSim, 500))
         predicted[9].append(itemCFPrediction(t[0]-1, t[1]-1, trainSet, oldItemSim, itemNum))
-        
+
         predicted[10].append(avgCFPrediction(t[0]-1, t[1]-1, trainSet, userSimArr, itemSimArr, userCommon, itemCommon, 0, 0))
         predicted[11].append(avgCFPrediction(t[0]-1, t[1]-1, trainSet, userSimArr, itemSimArr, userCommon, itemCommon, 25, 25))
         predicted[12].append(avgCFPrediction(t[0]-1, t[1]-1, trainSet, userSimArr, itemSimArr, userCommon, itemCommon, 300, 300))
@@ -282,12 +290,12 @@ def runNew(filename):
     trainSet = list2Array(trainSet)
     userSimArr, userCommon = newUserSim(trainSet)
     itemSimArr, itemCommon = newItemSim(trainSet)
-    
+
     actual = []
     predicted = []
-    for i in range(5):
+    for i in range(3):
         predicted.append([])
-        
+
     for t in testSet:
         actual.append(t[2])
 
@@ -295,11 +303,9 @@ def runNew(filename):
         predicted[0].append(avgCFPrediction(t[0]-1, t[1]-1, trainSet, userSimArr, itemSimArr, userCommon, itemCommon, 0, 0))
         predicted[1].append(avgCFPrediction(t[0]-1, t[1]-1, trainSet, userSimArr, itemSimArr, userCommon, itemCommon, 25, 25))
         predicted[2].append(avgCFPrediction(t[0]-1, t[1]-1, trainSet, userSimArr, itemSimArr, userCommon, itemCommon, 300, 300))
-        predicted[3].append(avgCFPrediction(t[0]-1, t[1]-1, trainSet, userSimArr, itemSimArr, userCommon, itemCommon, 500, 500))
-        predicted[4].append(avgCFPrediction(t[0]-1, t[1]-1, trainSet, userSimArr, itemSimArr, userCommon, itemCommon, userNum, itemNum))
 
     rmses = []
-    for i in range(5):
+    for i in range(3):
         rmses.append(calculateRmse(actual, predicted[i]))
     return rmses
 
@@ -307,19 +313,17 @@ def runNew(filename):
 
 if __name__ == '__main__':
     print time.ctime()
-##    print runNew('u.data')
-##    print time.ctime()
-    
-##    runAll('u.data')
-    
-    rmses = np.zeros(5)
-    for i in range(10):
-        rmse = runNew('u.data')
+#    print runNew('u.data')
+#    print time.ctime()
+
+#    runAll('u.data')
+
+    rmses = np.zeros(3)
+    for i in range(2):
+        rmse = runNew('ml-100k/u.data')
         print "time %d: " % i, rmse
         print time.ctime()
         rmses += rmse
-    rmses = rmses/10
+    rmses = rmses / 2
     print "average of ten times: ", rmses
     print time.ctime()
-        
-
